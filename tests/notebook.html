@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title>Ayni NoteBook</title>
+
+    <script src="../blockly_compressed_vertical.js"></script>
+    <script src="../msg/messages.js"></script>
+    <script src="../msg/scratch_msgs.js"></script>
+    <script src="../blocks_compressed.js"></script>
+    <script src="../blocks_compressed_vertical.js"></script>
+    <script>
+      'use strict';
+
+      var workspace = null;
+
+      function start() {
+        // Parse the URL arguments.
+      
+        var toolbox = getToolboxElement();
+        document.forms.options.elements.toolbox.selectedIndex =
+          toolbox ? 1: 0;
+
+        var locale = 'es';
+        Blockly.ScratchMsgs.setLocale(locale);
+        document.forms.options.elements.locale.value = locale;
+
+        // Create main workspace.
+        workspace = Blockly.inject('blocklyDiv', {
+          comments: true,
+          disable: false,
+          collapse: false,
+          media: '../media/',
+          readOnly: false,
+          rtl: false,
+          scrollbars: true,
+          toolbox: toolbox,
+          toolboxPosition: 2,
+          horizontalLayout: false,
+          trashcan: true,
+          sounds: true,
+          zoom: {
+            controls: true,
+            wheel: true,
+            startScale: 0.75,
+            maxScale: 4,
+            minScale: 0.25,
+            scaleSpeed: 1.1
+          },
+          colours: {
+            fieldShadow: 'rgba(255, 255, 255, 0.3)',
+            dragShadowOpacity: 0.6
+          }
+        });
+
+        var text = sessionStorage.getItem('textarea');
+        if (text) {
+          document.getElementById('importExport').value = text;
+        }
+        taChange();
+      }
+
+      function getToolboxElement() {
+        var match = location.search.match(/toolbox=([^&]+)/);
+        return document.getElementById('toolbox-' + (match ? match[1] : 'categories'));
+      }
+
+      function toXml() {
+        var output = document.getElementById('importExport');
+        var xml = Blockly.Xml.workspaceToDom(workspace);
+        output.value = Blockly.Xml.domToPrettyText(xml);
+        output.focus();
+        output.select();
+        taChange();
+      }
+
+      function fromXml() {
+        var input = document.getElementById('importExport');
+        var xml = Blockly.Xml.textToDom(input.value);
+        Blockly.Xml.domToWorkspace(xml, workspace);
+        taChange();
+      }
+
+      function toCode(lang) {
+        var output = document.getElementById('importExport');
+        output.value = Blockly[lang].workspaceToCode(workspace);
+        taChange();
+      }
+
+      function taChange() {
+        var textarea = document.getElementById('importExport');
+        if (sessionStorage) {
+          sessionStorage.setItem('textarea', textarea.value);
+        }
+        var valid = true;
+        try {
+          Blockly.Xml.textToDom(textarea.value);
+        } catch (e) {
+          valid = false;
+        }
+        document.getElementById('import').disabled = !valid;
+      }
+
+      function logEvents(state) {
+        var checkbox = document.getElementById('logCheck');
+        checkbox.checked = state;
+        if (sessionStorage) {
+          sessionStorage.setItem('logEvents', state ? 'checked' : '');
+        }
+        if (state) {
+          workspace.addChangeListener(logger);
+        } else {
+          workspace.removeChangeListener(logger);
+        }
+      }
+
+      function logger(e) {
+        console.log(e);
+      }
+
+      function setLocale(locale) {
+        workspace.getFlyout().setRecyclingEnabled(false);
+        var xml = Blockly.Xml.workspaceToDom(workspace);
+        Blockly.ScratchMsgs.setLocale(locale);
+        Blockly.Xml.clearWorkspaceAndLoadFromXml(xml, workspace);
+        workspace.getFlyout().setRecyclingEnabled(true);
+      }
+    </script>
+
+    <style>
+      html, body {
+        height: 100%;
+      }
+
+      #blocklyDiv {
+        float: right;
+        height: 95%;
+        width: 70%;
+      }
+
+    </style>
+  </head>
+
+  <body onload="start()">
+    <div id="blocklyDiv"></div>
+
+    <form id="options">
+
+        <select name="toolbox" onchange="document.forms.options.submit()">
+          <option value="categories">Categories</option>
+          <option value="simple">Simple</option>
+        </select>
+        
+        <select name="locale" onchange="setLocale(this.value)">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="es-419">Spanish (Latin America)</option>
+        </select>
+      </form>
+
+    <p>
+      <input type="button" value="Export to XML" onclick="toXml()">
+      <input type="button" value="Import from XML" onclick="fromXml()" id="import">
+      <input type="button" value="To JavaScript" onclick="toCode('JavaScript')">
+      <textarea id="importExport" style="width: 26%; height: 12em" onchange="taChange();" onkeyup="taChange()"></textarea>
+    </p>
+
+    <p>
+      <input type="button" value="Undo" onclick="workspace.undo()" />
+      <input type="button" value="Redo" onclick="workspace.undo(true)" />
+    </p>
+
+  </body>
+</html>
